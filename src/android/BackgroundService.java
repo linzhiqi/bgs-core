@@ -105,6 +105,14 @@ public abstract class BackgroundService extends Service {
 			this.mTimer.schedule(this.mUpdateTask, getMilliseconds(), getMilliseconds());
         }
 	}
+
+	public void _disableTimer(){
+		// Set to disabled
+		setEnabled(false);
+			
+		// Stop the timer task
+		stopTimerTask();
+	}
 	
 	/*
 	 ************************************************************************************************
