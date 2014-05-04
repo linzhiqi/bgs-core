@@ -53,7 +53,7 @@ public class MyService extends BackgroundService {
 	}
 
 	private void notifyArriving(long arrivingTime2, long ctime) {
-		if(arrivingTime2-ctime<=240000 && arrivingTime2-ctime>0){
+		if(arrivingTime2-ctime<=120000 && arrivingTime2-ctime>0){
 			if(isInRange(destLat, destLon)){
 				Log.d(TAG, "triggering arriving notification.");
 				triggerNotification(false);
@@ -79,11 +79,11 @@ public class MyService extends BackgroundService {
 		int mId;
 		if(isDeparture){
 			tile = mode+ " departure alert";
-			content = busNum +"is departing from "+srcStop+" in a minute";
+			content = busNum +" is departing from "+srcStop+" in a minute";
 			mId=0;
 		}else{
-			tile = "mode"+ " arrival alert";
-			content = busNum +"is arriving at "+dstStop;
+			tile = mode+ " arrival alert";
+			content = busNum +" is arriving at "+dstStop;
 			mId=1;
 		}
 		Intent intent = new Intent();
@@ -140,6 +140,7 @@ public class MyService extends BackgroundService {
 			if (config.has(tag)){
 				this.itinerary = config.getJSONObject(tag);
 				Log.d(TAG, "setConfig is triggerred. itinerary.duration: " + itinerary.get("duration").toString());
+				super._enableTimer(10000);
 				this.updateNextBusTimes(itinerary);
 			}else{
 				Log.d(TAG, "invalid config data");
@@ -192,7 +193,7 @@ public class MyService extends BackgroundService {
 				Log.d(TAG, "LegIndex:"+nextLegIndex+",mode:"+mode);
 				long startTime=leg.getLong("startTime");
 				long endTime=leg.getLong("endTime");
-				if(endTime<ctime || mode.equals("WALK")){
+				if(endTime<ctime || mode.equals("WALK") || mode.equals("WAIT")){
 					continue;
 				}
 				busNum=leg.getString("route");
@@ -208,6 +209,7 @@ public class MyService extends BackgroundService {
 					arrivingTime=endTime;
 					dep_ntf_triggered=false;
 					arr_ntf_triggered=false;
+					nextLegIndex++;
 					return;
 				}else{
 					/*when startTime<=ctime and endTime >= ctime,
@@ -215,6 +217,7 @@ public class MyService extends BackgroundService {
 					departureTime=0;
 					arrivingTime=endTime;
 					arr_ntf_triggered=false;
+					nextLegIndex++;
 					return;
 				}
 			}
@@ -244,3 +247,4 @@ public class MyService extends BackgroundService {
 	}
 
 }
+

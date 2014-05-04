@@ -114,6 +114,18 @@ public abstract class BackgroundService extends Service {
 		stopTimerTask();
 	}
 	
+	public void _enableTimer(int milliseconds){
+		// First stop it just to be on the safe side
+		stopTimerTask();
+		
+		// Then enable and set the milliseconds
+		setEnabled(true);
+		setMilliseconds(milliseconds);
+		
+		// Finally setup the TimerTask
+		setupTimerTask();
+	}
+	
 	/*
 	 ************************************************************************************************
 	 * Overriden Methods 
@@ -439,3 +451,4 @@ public abstract class BackgroundService extends Service {
 	protected void onPauseComplete() {
 	}
 }
+
