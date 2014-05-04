@@ -140,6 +140,7 @@ public class MyService extends BackgroundService {
 			if (config.has(tag)){
 				this.itinerary = config.getJSONObject(tag);
 				Log.d(TAG, "setConfig is triggerred. itinerary.duration: " + itinerary.get("duration").toString());
+				this.nextLegIndex=0;
 				this.updateNextBusTimes(itinerary);
 			}else{
 				Log.d(TAG, "invalid config data");
