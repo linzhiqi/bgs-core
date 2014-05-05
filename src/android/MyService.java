@@ -77,13 +77,13 @@ public class MyService extends BackgroundService {
 	private void triggerNotification(boolean isDeparture) {
 		String tile, content;
 		int mId;
+		tile = mode + " " + busNum + " alert";
 		if(isDeparture){
-			tile = mode+ " departure alert";
-			content = busNum +" is departing from "+srcStop+" in a minute";
+			contentText = "departing from "+srcStop+" in 1 min";
 			mId=0;
 		}else{
-			tile = mode+ " arrival alert";
-			content = busNum +" is arriving at "+dstStop;
+			tile =  mode + " " + busNum + " arrival alert";
+			contentText = "arriving at "+dstStop+" soon";
 			mId=1;
 		}
 		Intent intent = new Intent();
@@ -94,7 +94,7 @@ public class MyService extends BackgroundService {
         .setContentText(content)
         .setContentIntent(pendingIntent)
         .setTicker("HSL alert")
-        .setAutoCancel(true)
+        .setAutoCancel(false)
         .setSmallIcon(getResources().getIdentifier("icon","drawable", getPackageName())).build();
 		NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 		noti.defaults |= Notification.DEFAULT_ALL;
