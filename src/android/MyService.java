@@ -75,9 +75,9 @@ public class MyService extends BackgroundService {
 
 	
 	private void triggerNotification(boolean isDeparture) {
-		String tile, contentText;
+		String title, contentText;
 		int mId;
-		tile = mode + " " + busNum + " alert";
+		title = mode + " " + busNum + " alert";
 		if(isDeparture){
 			contentText = "departing from "+srcStop+" in 1 min";
 			mId=0;
@@ -89,8 +89,8 @@ public class MyService extends BackgroundService {
 		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, Intent.FLAG_ACTIVITY_NEW_TASK);
 		
 		Notification noti = new NotificationCompat.Builder(this)
-        .setContentTitle(tile)
-        .setContentText(content)
+        .setContentTitle(title)
+        .setContentText(contentText)
         .setContentIntent(pendingIntent)
         .setTicker("HSL alert")
         .setAutoCancel(false)
