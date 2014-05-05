@@ -75,14 +75,13 @@ public class MyService extends BackgroundService {
 
 	
 	private void triggerNotification(boolean isDeparture) {
-		String tile, content;
+		String tile, contentText;
 		int mId;
 		tile = mode + " " + busNum + " alert";
 		if(isDeparture){
 			contentText = "departing from "+srcStop+" in 1 min";
 			mId=0;
 		}else{
-			tile =  mode + " " + busNum + " arrival alert";
 			contentText = "arriving at "+dstStop+" soon";
 			mId=1;
 		}
