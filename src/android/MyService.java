@@ -51,12 +51,13 @@ public class MyService extends BackgroundService {
 		}
 		return result;	
 	}
-
+    //fire arrival alert 20 min before bus arrival
 	private void notifyArriving(long arrivingTime2, long ctime) {
-		if(arrivingTime2-ctime<=120000 && arrivingTime2-ctime>0){
+		if(arrivingTime2-ctime<=1200000 && arrivingTime2-ctime>0){
 			if(isInRange(destLat, destLon)){
-				Log.d(TAG, "triggering arriving notification.");
-				triggerNotification(false);
+				Log.d(TAG, "triggering arriving notification");
+				double minleft=(arrivingTime2-ctime)/60000.0;
+				triggerNotification(false,minleft);
 				arr_ntf_triggered=true;
 				updateNextBusTimes(this.itinerary);
 			}
@@ -64,25 +65,27 @@ public class MyService extends BackgroundService {
 		}
 		
 	}
-
+    //fire departure alert 20 min before bus departure
 	private void notifyDeparture(long departureTime2, long ctime) {
-		if(departureTime2-ctime<=60000 && departureTime2-ctime>0){
+		if(departureTime2-ctime<=1200000 && departureTime2-ctime>0){
 			Log.d(TAG, "triggering departure notification.");
-			triggerNotification(true);
+			double minleft=(departureTime2-ctime)/60000.0;
+			triggerNotification(true,minleft);
 			dep_ntf_triggered=true;
 		}
 	}
 
 	
-	private void triggerNotification(boolean isDeparture) {
+	private void triggerNotification(boolean isDeparture, double minleft) {
 		String title, contentText;
 		int mId;
-		title = mode + " " + busNum + " alert";
 		if(isDeparture){
-			contentText = "departing from "+srcStop+" in 1 min";
+			title = mode + " " + busNum + " departing";
+			contentText = "in "+String.format("%.1f", minleft)+" min from "+srcStop;
 			mId=0;
 		}else{
-			contentText = "arriving at "+dstStop+" soon";
+			title = mode + " " + busNum + " arriving";
+			contentText = "in "+String.format("%.1f", minleft)+" min to "+dstStop;
 			mId=1;
 		}
 		Intent intent = new Intent();
@@ -100,7 +103,7 @@ public class MyService extends BackgroundService {
 		notificationManager.notify(mId, noti);
 	}
 	
-	
+	// distance < 10km means in-range
 	private boolean isInRange(Double lat, Double lon){
 		if(lat==0.0 && lon==0.0){
 			return false;
@@ -112,10 +115,12 @@ public class MyService extends BackgroundService {
 	    Criteria criteria = new Criteria();
 	    provider = locationManager.getBestProvider(criteria, true);
 	    Location location = locationManager.getLastKnownLocation(provider);
-	    
+	    if(location==null){
+	    	return true;
+	    }
 	    float[] res = new float[1];
 	    Location.distanceBetween(location.getLatitude(), location.getLongitude(), lat, lon, res);
-	    return res[0]<1000;
+	    return res[0]<10000;
 	}
 
 	@Override
@@ -246,4 +251,5 @@ public class MyService extends BackgroundService {
 	}
 
 }
+
 
