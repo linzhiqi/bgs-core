@@ -23,6 +23,7 @@ public class MyService extends BackgroundService {
 	private JSONObject itinerary;
 	private String mode;
 	private String busNum;
+	private long walkStartTime;
 	private long departureTime;
 	private long arrivingTime;
 	private int nextLegIndex=0;
@@ -32,8 +33,10 @@ public class MyService extends BackgroundService {
 	private Double destLon=0.0;
 	private String srcStop;
 	private String dstStop;
+	private boolean walk_ntf_triggered=false;
 	private boolean dep_ntf_triggered=false;
-	private boolean arr_ntf_triggered=false;
+	private boolean arr_ntf_triggered_by_time=false;
+	private boolean arr_ntf_triggered_by_location=false;
 	
 
 	@Override
@@ -42,60 +45,90 @@ public class MyService extends BackgroundService {
 		long ctime = new Date().getTime();
 		Log.d(TAG, "currentTime:"+ctime+";departureTime:"+departureTime+";arrivingTime:"+arrivingTime);
 		
-		if(!dep_ntf_triggered && departureTime!=0 && departureTime>ctime){
+		if(!walk_ntf_triggered && departureTime!=0 && walkStartTime>ctime){
+			notifyWalk(walkStartTime,ctime);
+		}else if(!dep_ntf_triggered && departureTime>ctime){
 			notifyDeparture(departureTime, ctime);
-		}else if(!arr_ntf_triggered && arrivingTime!=0 && arrivingTime>ctime){
-			notifyArriving(arrivingTime, ctime);
+		}else if(arrivingTime>ctime){
+			if(!arr_ntf_triggered_by_time){
+				notifyArrivingByTime(arrivingTime, ctime);
+			}
+			if(!arr_ntf_triggered_by_location){
+				notifyArrivingByLocation(arrivingTime, ctime);
+			}
+			
 		}else if(arrivingTime<ctime){
-			reset();
+			updateNextBusTimes(this.itinerary);
 		}
 		return result;	
 	}
-    //fire arrival alert 20 min before bus arrival
-	private void notifyArriving(long arrivingTime2, long ctime) {
-		if(arrivingTime2-ctime<=1200000 && arrivingTime2-ctime>0){
-			if(isInRange(destLat, destLon)){
-				Log.d(TAG, "triggering arriving notification");
-				double minleft=(arrivingTime2-ctime)/60000.0;
-				triggerNotification(false,minleft);
-				arr_ntf_triggered=true;
-				updateNextBusTimes(this.itinerary);
-			}
-			
-		}
+	//fire walk alert 2 min before action time
+    private void notifyWalk(long walkStartTime2, long ctime) {
+    	if(walkStartTime2-ctime<=120000 && walkStartTime2-ctime>0){
+    		Log.d(TAG, "triggering start moving notification");
+    		double minleft=(walkStartTime2-ctime)/60000.0;
+    		String ticker = "HSL start off alert";
+    		String title = "To catch "+busNum;
+			String contentText = "you have to start off in "+String.format("%.1f", minleft)+" min";
+    		triggerNotification(0,ticker,title,contentText);
+    		walk_ntf_triggered=true;
+    	}
 		
 	}
-    //fire departure alert 20 min before bus departure
+
+    //fire departure alert 2 min before bus departure
 	private void notifyDeparture(long departureTime2, long ctime) {
-		if(departureTime2-ctime<=1200000 && departureTime2-ctime>0){
+		if(departureTime2-ctime<=120000 && departureTime2-ctime>0){
 			Log.d(TAG, "triggering departure notification.");
 			double minleft=(departureTime2-ctime)/60000.0;
-			triggerNotification(true,minleft);
+			String ticker = "HSL transport departure alert";
+			String title = mode + " " + busNum + " departing";
+			String contentText = "in "+String.format("%.1f", minleft)+" min from "+srcStop;
+			triggerNotification(1,ticker,title,contentText);
 			dep_ntf_triggered=true;
 		}
 	}
-
 	
-	private void triggerNotification(boolean isDeparture, double minleft) {
-		String title, contentText;
-		int mId;
-		if(isDeparture){
-			title = mode + " " + busNum + " departing";
-			contentText = "in "+String.format("%.1f", minleft)+" min from "+srcStop;
-			mId=0;
-		}else{
-			title = mode + " " + busNum + " arriving";
+	//fire arrival alert 2 min before bus arrival time, also indicate the distance<1.5km if location is available
+	private void notifyArrivingByTime(long arrivingTime2, long ctime) {
+		if(arrivingTime2-ctime<=120000 && arrivingTime2-ctime>0){
+			Log.d(TAG, "triggering arriving notification according to timetable");
+			double minleft=(arrivingTime2-ctime)/60000.0;
+			String title = mode + " " + busNum + " arriving";
+			String contentText;
+			String ticker = "HSL transport arrival alert";
 			contentText = "in "+String.format("%.1f", minleft)+" min to "+dstStop;
-			mId=1;
+			triggerNotification(2,ticker,title,contentText);
+			arr_ntf_triggered_by_time=true;
 		}
+		
+	}
+	//start checking location 4 min before the arrival time according to timetable
+	private void notifyArrivingByLocation(long arrivingTime2, long ctime) {
+		if(arrivingTime2-ctime<=2400000 && arrivingTime2-ctime>0){
+			Log.d(TAG, "triggering arriving notification according to location");
+			String title = mode + " " + busNum + " arriving";
+			String contentText;
+			String ticker = "HSL transport arrival alert";
+			if(isInRange(destLat, destLon)){
+				contentText="your location<1km to "+dstStop;
+				triggerNotification(3,ticker,title,contentText);
+				updateNextBusTimes(this.itinerary);
+				arr_ntf_triggered_by_location=true;
+			}
+		}
+		
+	}
+	
+	private void triggerNotification(int mId, String ticker, String title, String content) {
 		Intent intent = new Intent();
 		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, Intent.FLAG_ACTIVITY_NEW_TASK);
 		
 		Notification noti = new NotificationCompat.Builder(this)
         .setContentTitle(title)
-        .setContentText(contentText)
+        .setContentText(content)
         .setContentIntent(pendingIntent)
-        .setTicker("HSL alert")
+        .setTicker(ticker)
         .setAutoCancel(false)
         .setSmallIcon(getResources().getIdentifier("icon","drawable", getPackageName())).build();
 		NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -103,7 +136,7 @@ public class MyService extends BackgroundService {
 		notificationManager.notify(mId, noti);
 	}
 	
-	// distance < 10km means in-range
+	// distance < 1km means in-range
 	private boolean isInRange(Double lat, Double lon){
 		if(lat==0.0 && lon==0.0){
 			return false;
@@ -116,11 +149,11 @@ public class MyService extends BackgroundService {
 	    provider = locationManager.getBestProvider(criteria, true);
 	    Location location = locationManager.getLastKnownLocation(provider);
 	    if(location==null){
-	    	return true;
+	    	return false;
 	    }
 	    float[] res = new float[1];
 	    Location.distanceBetween(location.getLatitude(), location.getLongitude(), lat, lon, res);
-	    return res[0]<10000;
+	    return res[0]<1001;
 	}
 
 	@Override
@@ -197,7 +230,12 @@ public class MyService extends BackgroundService {
 				Log.d(TAG, "LegIndex:"+nextLegIndex+",mode:"+mode);
 				long startTime=leg.getLong("startTime");
 				long endTime=leg.getLong("endTime");
-				if(endTime<ctime || mode.equals("WALK") || mode.equals("WAIT")){
+				if(endTime<ctime || mode.equals("WAIT")){
+					continue;
+				}else if(mode.equals("WALK")){
+					if(nextLegIndex==0){
+						this.walkStartTime=startTime;
+					}
 					continue;
 				}
 				busNum=leg.getString("route");
@@ -212,7 +250,8 @@ public class MyService extends BackgroundService {
 					departureTime=startTime;
 					arrivingTime=endTime;
 					dep_ntf_triggered=false;
-					arr_ntf_triggered=false;
+					arr_ntf_triggered_by_time=false;
+					arr_ntf_triggered_by_location=false;
 					nextLegIndex++;
 					return;
 				}else{
@@ -220,7 +259,8 @@ public class MyService extends BackgroundService {
 					 *  it is when user already on bus*/
 					departureTime=0;
 					arrivingTime=endTime;
-					arr_ntf_triggered=false;
+					arr_ntf_triggered_by_time=false;
+					arr_ntf_triggered_by_location=false;
 					nextLegIndex++;
 					return;
 				}
@@ -235,13 +275,17 @@ public class MyService extends BackgroundService {
 	}
 	
 	private void reset(){
-		this.departureTime=0;
-		this.arrivingTime=0;
-		this.busNum="NULL";
-		this.destLat=0.0;
-		this.destLon=0.0;
+		Log.d(TAG, "reset() is called");
+		walkStartTime=0;
+		departureTime=0;
+		arrivingTime=0;
+		busNum="NULL";
+		destLat=0.0;
+		destLon=0.0;
+		walk_ntf_triggered=false;
 		dep_ntf_triggered=false;
-		arr_ntf_triggered=false;
+		arr_ntf_triggered_by_time=false;
+		arr_ntf_triggered_by_location=false;
 		nextLegIndex=0;
 		disableServiceTimer();
 	}
@@ -251,5 +295,6 @@ public class MyService extends BackgroundService {
 	}
 
 }
+
 
 
